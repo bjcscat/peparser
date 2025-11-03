@@ -22,7 +22,11 @@ jobs:
         uses: CompeyDev/setup-rokit@v0.1.2
       
       - name: Install Luau and Lute
-        run: rokit install
+        run: |
+            rokit trust luau-lang/luau
+            rokit trust luau-lang/lute
+            rokit trust JohnnyMorganz/StyLua
+            rokit install
       
       - name: Run tests
         run: lute run scripts/run_tests.luau
