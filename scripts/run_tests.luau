@@ -1,5 +1,6 @@
 local fs = require("@lute/fs")
 local process = require("@lute/process")
+local task = require("@lute/task")
 
 local base64 = require("../tests/utils/base64")
 
@@ -52,7 +53,22 @@ process.run({
 
 print("Filtering int64 from coverage report...")
 
-local coverage_data = fs.readasync("coverage.out")
+local coverage_handle: fs.FileHandle
+for attempt = 1, 10 do
+	local success
+    success, coverage_handle = pcall(fs.open :: any, "coverage.out", "r+")
+	
+	if success then
+		break
+	elseif attempt < 10 then
+		print(`Attempt {attempt} failed to read coverage.out, retrying...`)
+		task.wait(0.1)
+	else
+		error(`Failed to read coverage.out after multiple attempts: {coverage_handle}`)
+	end
+end
+
+local coverage_data: string = fs.read(coverage_handle)
 
 local function filter_paths_from_coverage(paths: { string }): string
 	local filtered_lines: { string } = {}
@@ -83,9 +99,8 @@ local function filter_paths_from_coverage(paths: { string }): string
 	return table.concat(filtered_lines, "\n")
 end
 
-local coverage = fs.open("coverage.out", "w")
 fs.write(
-	coverage,
+	coverage_handle,
 	filter_paths_from_coverage({ "int64%.luau", "base64%.luau", "test_case%.luau", "test_info%.luau", "test_collator%.luau"})
 )
-fs.close(coverage)
+fs.close(coverage_handle)
