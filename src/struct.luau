@@ -117,35 +117,34 @@ local function array<T>(field_type: FieldType<T>, size: number): FieldType<{ T }
 end
 
 local function null_terminated_string(size: number): FieldType<string>
-    return {
-        __inner = nil :: never,
+	return {
+		__inner = nil :: never,
 
-        read = function(b: buffer, offset: number): (string, number)
-            local real_size = size
-            for i = 0, size - 1 do
-                local byte = buffer.readu8(b, offset + i)
+		read = function(b: buffer, offset: number): (string, number)
+			local real_size = size
+			for i = 0, size - 1 do
+				local byte = buffer.readu8(b, offset + i)
 
-                if byte == 0 then
-                    real_size = i
-                    break
-                end
-            end
+				if byte == 0 then
+					real_size = i
+					break
+				end
+			end
 
+			local value = buffer.readstring(b, offset, real_size)
 
-            local value = buffer.readstring(b, offset, real_size)
+			return value, offset + size
+		end,
 
-            return value, offset + size
-        end,
+		write = function(b: buffer, offset: number, value: string): number
+			assert(#value <= size)
 
-        write = function(b: buffer, offset: number, value: string): number
-            assert(#value <= size)
+			buffer.writestring(b, offset, value)
+			return offset + size
+		end,
 
-            buffer.writestring(b, offset, value)
-            return offset + size
-        end,
-
-        size = size,
-    }
+		size = size,
+	}
 end
 
 local function struct<T>(fields: { T }): FieldType<make_table_from_union_type<T>>
@@ -218,7 +217,7 @@ return {
 
 	array = array,
 	struct = struct,
-    null_terminated_string = null_terminated_string,
+	null_terminated_string = null_terminated_string,
 
 	int64_lib = int64,
 }

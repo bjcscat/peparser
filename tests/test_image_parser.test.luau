@@ -26,7 +26,7 @@ local function test_parse_resources(exe_data: buffer)
 	local image = peparser.image.parse(exe_data)
 
 	local resources = peparser.resources.from_image(image)
-    
+
 	if resources then
 		assert(resources.directory ~= nil, "Root resource directory is missing")
 		assert(resources.entries ~= nil, "Root resource entries are missing")

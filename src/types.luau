@@ -226,13 +226,13 @@ export type NTHeaders = {
 }
 
 export type Image = {
-    source: buffer,
-    
-    dos_header: DOSHeader,
+	source: buffer,
+
+	dos_header: DOSHeader,
 	coff_header: COFFHeader,
 	optional_header: OptionalHeader,
 	data_directories: DataDirectories,
-    sections: { Section },
+	sections: { Section },
 }
 
 return {

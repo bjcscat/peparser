@@ -4,6 +4,25 @@ local task = require("@lute/task")
 
 local base64 = require("../tests/utils/base64")
 
+local function open_with_retry(path: string, mode: string): fs.FileHandle
+	local file_handle: fs.FileHandle
+	for attempt = 1, 10 do
+		local success
+		success, file_handle = pcall(fs.open :: any, path, mode)
+
+		if success then
+			return file_handle
+		elseif attempt < 10 then
+			print(`Attempt {attempt} failed to open {path}, retrying...`)
+			task.wait(0.1)
+		else
+			error(`Failed to open {path} after multiple attempts: {file_handle}`)
+		end
+	end
+
+	error("unreachable")
+end
+
 local test_paths = {}
 for _, entry in fs.listdir("./tests") do
 	if entry.name:sub(-9) == "test.luau" then
@@ -30,11 +49,13 @@ local function write_test_info(test_names: { string }, exe_files: { { name: stri
 
 	fs.writestringtofile(
 		"test_info.luau",
-		`return \{test_names = \{{table.concat(test_names_quoted, ", ")}\}, exe_files = \{{table.concat(exe_files_table, ", ")}\}\}`
+		`return \{test_names = \{{table.concat(test_names_quoted, ", ")}\}, exe_files = \{{table.concat(
+			exe_files_table,
+			", "
+		)}\}\}`
 	)
 end
 
--- Collect all exe files from tests/artifacts
 local exe_files: { { name: string, contents: buffer } } = {}
 for _, entry in fs.listdir("./tests/artifacts") do
 	if entry.name:sub(-4) == "exe_" then
@@ -53,37 +74,20 @@ process.run({
 
 print("Filtering int64 from coverage report...")
 
-local coverage_handle: fs.FileHandle
-for attempt = 1, 10 do
-	local success
-    success, coverage_handle = pcall(fs.open :: any, "coverage.out", "r+")
-	
-	if success then
-		break
-	elseif attempt < 10 then
-		print(`Attempt {attempt} failed to read coverage.out, retrying...`)
-		task.wait(0.1)
-	else
-		error(`Failed to read coverage.out after multiple attempts: {coverage_handle}`)
-	end
-end
-
-local coverage_data: string = fs.read(coverage_handle)
-
-local function filter_paths_from_coverage(paths: { string }): string
+local function filter_paths_from_coverage(input: string, paths: { string }): string
 	local filtered_lines: { string } = {}
 	local skip_until_end = false
 
-    local function matches(line: string): boolean
-        for _, p in paths do
-            if string.find(line, p) then
-                return true
-            end
-        end
-        return false
-    end
+	local function matches(line: string): boolean
+		for _, p in paths do
+			if string.find(line, p) then
+				return true
+			end
+		end
+		return false
+	end
 
-	for line in string.gmatch(coverage_data, "[^\r\n]+") do
+	for line in string.gmatch(input, "[^\r\n]+") do
 		if matches(line) then
 			skip_until_end = true
 		elseif line == "end_of_record" then
@@ -99,8 +103,15 @@ local function filter_paths_from_coverage(paths: { string }): string
 	return table.concat(filtered_lines, "\n")
 end
 
-fs.write(
-	coverage_handle,
-	filter_paths_from_coverage({ "int64%.luau", "base64%.luau", "test_case%.luau", "test_info%.luau", "test_collator%.luau"})
-)
+local coverage_data: string = fs.readfiletostring("coverage.out")
+local out = filter_paths_from_coverage(coverage_data, {
+	"int64%.luau",
+	"base64%.luau",
+	"test_case%.luau",
+	"test_info%.luau",
+	"test_collator%.luau",
+})
+
+local coverage_handle = open_with_retry("coverage.out", "w")
+fs.write(coverage_handle, out)
 fs.close(coverage_handle)

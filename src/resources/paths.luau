@@ -37,5 +37,5 @@ end
 return {
 	TYPES = RESOURCE_TYPES,
 
-	make_path = make_path
+	make_path = make_path,
 }

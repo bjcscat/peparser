@@ -1,5 +1,5 @@
-local utf16le = require("../utf16le")
 local types = require("../types")
+local utf16le = require("../utf16le")
 
 type ResourceNode = types.ResourceNode
 type ResourceId = types.ResourceId
@@ -126,11 +126,11 @@ local function serialize(root: ResourceNode, base_rva: number): buffer
 		table.sort(sorted_entries, function(a, b)
 			local a_is_string = type(a.id) == "string"
 			local b_is_string = type(b.id) == "string"
-			
+
 			if a_is_string ~= b_is_string then
 				return a_is_string -- strings before numbers
 			end
-			
+
 			if a_is_string then
 				return (a.id :: string) < (b.id :: string)
 			else

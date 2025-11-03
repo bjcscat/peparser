@@ -5,10 +5,13 @@ local test_data = (require)("../test_info")
 
 local exe_buffers: { { name: string, contents: buffer } } = {}
 for _, exe_file in test_data.exe_files do
-	table.insert(exe_buffers, {
-		name = exe_file.name,
-		contents = base64.decode(buffer.fromstring(exe_file.contents)),
-	} :: typeof(exe_buffers[1]))
+	table.insert(
+		exe_buffers,
+		{
+			name = exe_file.name,
+			contents = base64.decode(buffer.fromstring(exe_file.contents)),
+		} :: typeof(exe_buffers[1])
+	)
 end
 
 local total_suites = 0

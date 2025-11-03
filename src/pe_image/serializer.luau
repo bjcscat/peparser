@@ -26,7 +26,7 @@ end
 
 local function get_data_directory_array(data_dirs: types.DataDirectories): { DataDirectory }
 	local array: { DataDirectory } = {}
-	
+
 	array[1] = data_dirs.export_table or { virtual_address = 0, size = 0 }
 	array[2] = data_dirs.import_table or { virtual_address = 0, size = 0 }
 	array[3] = data_dirs.resource_table or { virtual_address = 0, size = 0 }
@@ -43,7 +43,7 @@ local function get_data_directory_array(data_dirs: types.DataDirectories): { Dat
 	array[14] = data_dirs.delay_import_descriptor or { virtual_address = 0, size = 0 }
 	array[15] = data_dirs.clr_runtime_header or { virtual_address = 0, size = 0 }
 	array[16] = { virtual_address = 0, size = 0 } -- reserved
-	
+
 	return array
 end
 
@@ -69,7 +69,7 @@ local function calculate_headers_size(image: Image, is_pe32: boolean): number
 	else
 		size += windows_pe64.size
 	end
-	
+
 	-- Data directories (16 max)
 	size += 16 * image_data_directory.size
 
@@ -147,8 +147,8 @@ local function relocate_sections(image: Image): Image
 
 	windows_headers.size_of_image = current_rva
 
-    -- update RVAs in data directories
-    local data_dirs_array = get_data_directory_array(image.data_directories)
+	-- update RVAs in data directories
+	local data_dirs_array = get_data_directory_array(image.data_directories)
 	for _, directory in data_dirs_array do
 		if directory.size > 0 then
 			local old_dir_rva = directory.virtual_address
@@ -208,7 +208,7 @@ local function serialize(image: Image, should_relocate: boolean?): buffer
 	buffer.writeu32(output, offset, NT_SIGNATURE)
 	offset += 4
 
-    -- Write COFF header
+	-- Write COFF header
 	local coff = table.clone(working_image.coff_header)
 	coff.number_of_sections = #working_image.sections
 
