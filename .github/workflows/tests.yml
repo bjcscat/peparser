@@ -27,3 +27,12 @@ jobs:
       - name: Run tests
         run: lute run scripts/run_tests.luau
         shell: bash
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          file: ./coverage.out
+          flags: ${{ matrix.os }}
+          name: codecov-${{ matrix.os }}
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}

@@ -1,5 +1,5 @@
 local test_case_lib = require("./utils/test_case")
-local utf16le = require("../lib/utf16le")
+local utf16le = require("@peparser/utf16le")
 
 local test_case = test_case_lib.test_case
 
@@ -313,6 +313,4 @@ return function()
 	test_case("read_with_length_buffer_overflow", test_read_with_length_buffer_overflow)
 	test_case("read_with_length_missing_length_field", test_read_with_length_missing_length_field)
 	test_case("encode_invalid_utf8", test_encode_invalid_utf8)
-
-	return not test_case_lib.has_failed
 end

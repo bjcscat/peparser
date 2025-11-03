@@ -1,17 +1,23 @@
-local serializer = require("./serializer")
-local utf16le = require("./utf16le")
-local types = require("./types")
+local utf16le = require("../utf16le")
+local types = require("../types")
 
 type ResourceNode = types.ResourceNode
-local resource_directory_struct = types.resource_directory_struct
-local resource_directory_entry_struct = types.resource_directory_entry_struct
-local resource_data_entry_struct = types.resource_data_entry_struct
+type ResourceId = types.ResourceId
+
+local resource_directory = types.resource_directory
+local resource_directory_entry = types.resource_directory_entry
+local resource_data_entry = types.resource_data_entry
 
 local RESOURCE_DIRECTORY_FLAG = 0x80000000
 local RESOURCE_NAME_FLAG = 0x80000000
 local ALIGNMENT = 8
 
-local align = serializer.align
+local function align(value: number, alignment: number): number
+	if alignment == 0 then
+		return value
+	end
+	return math.ceil(value / alignment) * alignment
+end
 
 type DataEntry = {
 	node: ResourceNode,
@@ -51,8 +57,8 @@ local function serialize(root: ResourceNode, base_rva: number): buffer
 	end
 
 	local function collect_strings(node: ResourceNode)
-		if type(node.name_or_id) == "string" then
-			local name = node.name_or_id :: string
+		if type(node.id) == "string" then
+			local name = node.id :: string
 			if not string_offsets[name] then
 				string_offsets[name] = string_table_size
 				table.insert(string_entries, {
@@ -111,22 +117,38 @@ local function serialize(root: ResourceNode, base_rva: number): buffer
 			return
 		end
 
-		write_offset = resource_directory_struct.write(output, write_offset, node.directory)
+		write_offset = resource_directory.write(output, write_offset, node.directory)
 
 		local entries_start = write_offset
 		write_offset += #node.entries * 8
 
-		for index, entry in node.entries do
+		local sorted_entries = table.clone(node.entries)
+		table.sort(sorted_entries, function(a, b)
+			local a_is_string = type(a.id) == "string"
+			local b_is_string = type(b.id) == "string"
+			
+			if a_is_string ~= b_is_string then
+				return a_is_string -- strings before numbers
+			end
+			
+			if a_is_string then
+				return (a.id :: string) < (b.id :: string)
+			else
+				return (a.id :: number) < (b.id :: number)
+			end
+		end)
+
+		for index, entry in sorted_entries do
 			local entry_write_pos = entries_start + (index - 1) * 8
 			local offset_value = 0
-			local name_or_id_value: number
+			local id_value: number
 
-			if type(entry.name_or_id) == "string" then
-				local name = entry.name_or_id :: string
+			if type(entry.id) == "string" then
+				local name = entry.id :: string
 				local name_offset = string_offsets[name] or 0
-				name_or_id_value = bit32.bor(string_table_base + name_offset, RESOURCE_NAME_FLAG)
+				id_value = bit32.bor(string_table_base + name_offset, RESOURCE_NAME_FLAG)
 			else
-				name_or_id_value = entry.name_or_id :: number
+				id_value = entry.id :: number
 			end
 
 			local child = entry.node
@@ -145,14 +167,14 @@ local function serialize(root: ResourceNode, base_rva: number): buffer
 							reserved = 0,
 						}
 						local saved_offset = write_offset
-						write_offset = resource_data_entry_struct.write(output, write_offset, data_entry_record)
+						write_offset = resource_data_entry.write(output, write_offset, data_entry_record)
 						offset_value = saved_offset
 					end
 				end
 			end
 
-			resource_directory_entry_struct.write(output, entry_write_pos, {
-				name_or_id = name_or_id_value,
+			resource_directory_entry.write(output, entry_write_pos, {
+				name_or_id = id_value,
 				offset_to_data_or_directory = offset_value,
 			})
 		end
@@ -173,6 +195,4 @@ local function serialize(root: ResourceNode, base_rva: number): buffer
 	return output
 end
 
-return {
-	serialize = serialize,
-}
+return serialize
